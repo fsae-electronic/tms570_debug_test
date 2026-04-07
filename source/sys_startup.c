@@ -252,11 +252,116 @@ void _c_int00(void)
     /* Initialize System - Clock, Flash settings with Efuse self check */
     systemInit();
     
+    /* Workaround for Errata PBIST#4 */
+    errata_PBIST_4();
+	
+    /* Run a diagnostic check on the memory self-test controller.
+     * This function chooses a RAM test algorithm and runs it on an on-chip ROM.
+     * The memory self-test is expected to fail. The function ensures that the PBIST controller
+     * is capable of detecting and indicating a memory self-test failure.
+     */
+    pbistSelfCheck();	
+	
+	/* Run PBIST on STC ROM */
+    pbistRun((uint32)STC_ROM_PBIST_RAM_GROUP,
+             ((uint32)PBIST_TripleReadSlow | (uint32)PBIST_TripleReadFast));
+    
+    /* Wait for PBIST for STC ROM to be completed */
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
+    while(pbistIsTestCompleted() != TRUE)
+    { 
+    }/* Wait */ 
+    
+    /* Check if PBIST on STC ROM passed the self-test */
+    if( pbistIsTestPassed() != TRUE)
+    {
+        /* PBIST and STC ROM failed the self-test.
+         * Need custom handler to check the memory failure
+         * and to take the appropriate next step.
+         */
+         
+        pbistFail();
+
+    }   
+	
+    /* Disable PBIST clocks and disable memory self-test mode */
+    pbistStop();
+
+	/* Run PBIST on PBIST ROM */
+    pbistRun((uint32)PBIST_ROM_PBIST_RAM_GROUP,
+             ((uint32)PBIST_TripleReadSlow | (uint32)PBIST_TripleReadFast));
+    
+    /* Wait for PBIST for PBIST ROM to be completed */
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
+    while(pbistIsTestCompleted() != TRUE)
+    { 
+    }/* Wait */ 
+    
+    /* Check if PBIST ROM passed the self-test */
+    if( pbistIsTestPassed() != TRUE)
+    {
+        /* PBIST and STC ROM failed the self-test.
+         * Need custom handler to check the memory failure
+         * and to take the appropriate next step.
+         */
+         
+        pbistFail();
+
+    } 
+	
+    /* Disable PBIST clocks and disable memory self-test mode */
+    pbistStop();	
 /* USER CODE BEGIN (29) */
 /* USER CODE END */
 
 /* USER CODE BEGIN (31) */
 /* USER CODE END */
+
+    /* Disable RAM ECC before doing PBIST for Main RAM */
+    _coreDisableRamEcc_();
+    
+    /* Run PBIST on CPU RAM.
+     * The PBIST controller needs to be configured separately for single-port and dual-port SRAMs.
+     * The CPU RAM is a single-port memory. The actual "RAM Group" for all on-chip SRAMs is defined in the
+     * device datasheet.
+     */
+    pbistRun(0x00300020U, /* ESRAM Single Port PBIST */
+             (uint32)PBIST_March13N_SP);
+
+/* USER CODE BEGIN (32) */
+/* USER CODE END */
+
+    /* Wait for PBIST for CPU RAM to be completed */
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
+    while(pbistIsTestCompleted() != TRUE)
+    { 
+    }/* Wait */                 
+    
+
+/* USER CODE BEGIN (33) */
+/* USER CODE END */
+    
+    /* Check if CPU RAM passed the self-test */
+    if( pbistIsTestPassed() != TRUE)
+    {
+        /* CPU RAM failed the self-test.
+         * Need custom handler to check the memory failure
+         * and to take the appropriate next step.
+         */
+/* USER CODE BEGIN (34) */
+/* USER CODE END */
+         
+        pbistFail();
+        
+/* USER CODE BEGIN (35) */
+/* USER CODE END */
+    }
+
+/* USER CODE BEGIN (36) */
+/* USER CODE END */
+
+    /* Disable PBIST clocks and disable memory self-test mode */
+    pbistStop();
 
     
 /* USER CODE BEGIN (37) */
@@ -282,6 +387,83 @@ void _c_int00(void)
 /* USER CODE BEGIN (39) */
 /* USER CODE END */
 
+    /* Start PBIST on all dual-port memories */
+    /* NOTE : Please Refer DEVICE DATASHEET for the list of Supported Dual port Memories.
+       PBIST test performed only on the user selected memories in HALCoGen's GUI SAFETY INIT tab.
+     */
+    pbistRun(  (uint32)0x00000000U    /* EMAC RAM */
+             | (uint32)0x00000000U    /* USB RAM */  
+             | (uint32)0x00000800U    /* DMA RAM */
+             | (uint32)0x00000200U    /* VIM RAM */
+             | (uint32)0x00000040U    /* MIBSPI1 RAM */
+             | (uint32)0x00000080U    /* MIBSPI3 RAM */
+             | (uint32)0x00000100U    /* MIBSPI5 RAM */
+             | (uint32)0x00000004U    /* CAN1 RAM */
+             | (uint32)0x00000008U    /* CAN2 RAM */
+             | (uint32)0x00000010U    /* CAN3 RAM */
+             | (uint32)0x00000400U    /* ADC1 RAM */
+             | (uint32)0x00020000U    /* ADC2 RAM */
+             | (uint32)0x00001000U    /* HET1 RAM */
+             | (uint32)0x00040000U    /* HET2 RAM */
+             | (uint32)0x00002000U    /* HTU1 RAM */
+             | (uint32)0x00080000U    /* HTU2 RAM */
+             | (uint32)0x00000000U    /* RTP RAM */
+             | (uint32)0x00000000U    /* FRAY RAM */
+             ,(uint32) PBIST_March13N_DP);
+
+/* USER CODE BEGIN (40) */
+/* USER CODE END */
+
+    /* Test the CPU ECC mechanism for RAM accesses.
+     * The checkBxRAMECC functions cause deliberate single-bit and double-bit errors in TCRAM accesses
+     * by corrupting 1 or 2 bits in the ECC. Reading from the TCRAM location with a 2-bit error
+     * in the ECC causes a data abort exception. The data abort handler is written to look for
+     * deliberately caused exception and to return the code execution to the instruction
+     * following the one that caused the abort.
+     */
+    checkRAMECC();
+
+/* USER CODE BEGIN (41) */
+/* USER CODE END */
+/* USER CODE BEGIN (43) */
+/* USER CODE END */
+
+    /* Wait for PBIST for CPU RAM to be completed */
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Hardware status bit read check" */
+    while(pbistIsTestCompleted() != TRUE)
+    { 
+    }/* Wait */                 
+    
+
+/* USER CODE BEGIN (44) */
+/* USER CODE END */
+
+    /* Check if CPU RAM passed the self-test */
+    if( pbistIsTestPassed() != TRUE)
+    {
+
+/* USER CODE BEGIN (45) */
+/* USER CODE END */
+
+        /* CPU RAM failed the self-test.
+         * Need custom handler to check the memory failure
+         * and to take the appropriate next step.
+         */
+/* USER CODE BEGIN (46) */
+/* USER CODE END */
+         
+        pbistFail();
+        
+/* USER CODE BEGIN (47) */
+/* USER CODE END */
+    }
+
+/* USER CODE BEGIN (48) */
+/* USER CODE END */
+
+    /* Disable PBIST clocks and disable memory self-test mode */
+    pbistStop();
+    
 /* USER CODE BEGIN (55) */
 /* USER CODE END */
 
