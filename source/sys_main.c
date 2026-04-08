@@ -67,11 +67,11 @@
 int main(void)
 {
     gioInit();
-    uint32_t dirA = 0U;
-    dirA |= (1<<0U); //GIOA0 as output
+    uint32_t dirB = 0U;
+    dirB |= (1<<0U); //GIOA0 as output
 
-    gioSetDirection(gioPORTA, dirA);
-    gioSetBit(gioPORTA, 0U, 1U);
+    gioSetDirection(gioPORTB, dirB);
+    gioSetBit(gioPORTB, 0U, 1U);
 
     while(1)
     {
@@ -80,7 +80,7 @@ int main(void)
         {
             /* delay */
         }
-        gioToggleBit(gioPORTA, 0U);
+        gioSetBit(gioPORTB, 0U, 0U);
 
     }
 

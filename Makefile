@@ -15,7 +15,7 @@ OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES_C))
 OBJECTS += $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(SOURCES_S))
 
 # Flags corregidos (softfp para evitar el error de VFP)
-CFLAGS = -mcpu=cortex-r4f -mthumb -mfloat-abi=softfp -mfpu=vfpv3-d16 -I$(INC_DIR) -O0 -g -Wno-attributes
+CFLAGS = -mcpu=cortex-r4f -marm -mfloat-abi=softfp -mfpu=vfpv3-d16 -I$(INC_DIR) -O0 -g -Wno-attributes
 LDFLAGS = -T $(SRC_DIR)/sys_link.ld -Wl,--gc-sections -nostartfiles --specs=nosys.specs --specs=nano.specs -Wl,--no-warn-rwx-segments
 
 all: $(BUILD_DIR)/$(TARGET).elf
