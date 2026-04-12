@@ -1,0 +1,15 @@
+# Build artifacts
+*.bin
+*.elf
+*.o
+*.d
+
+# TI/CCS Artifacts
+*.map
+*.lst
+*.out
+*.dep
+*.obj
+
+# VSCode
+.vscode/
