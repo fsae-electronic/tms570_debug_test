@@ -1,39 +1,56 @@
-# --- Makefile Actualizado ---
-TARGET = tms570_project
-CC = arm-none-eabi-gcc
-OBJCOPY = arm-none-eabi-objcopy
+TOOLCHAIN = arm-none-eabi
+CC        = $(TOOLCHAIN)-gcc
+AS        = $(TOOLCHAIN)-gcc
+LD        = $(TOOLCHAIN)-gcc
+OBJCOPY   = $(TOOLCHAIN)-objcopy
+SIZE      = $(TOOLCHAIN)-size
 
-SRC_DIR = source
-INC_DIR = include
-BUILD_DIR = build
+CPU_FLAGS = \
+    -mcpu=cortex-r4 \
+    -mfpu=vfpv3-d16 \
+    -mfloat-abi=hard \
+    -mbig-endian \
+    -marm
 
-# Buscar archivos .c Y archivos .s (ensamblador)
-SOURCES_C = $(wildcard $(SRC_DIR)/*.c)
-SOURCES_S = $(wildcard $(SRC_DIR)/*.s)
+CFLAGS  = $(CPU_FLAGS) -Os -Wall -Wextra -ffunction-sections -fdata-sections -g3
+ASFLAGS = $(CPU_FLAGS) -x assembler-with-cpp
+LDFLAGS = $(CPU_FLAGS) \
+    -nostartfiles \
+    -Wl,--gc-sections \
+    -Wl,-Map=$(TARGET).map \
+    -T $(LDSCRIPT)
 
-OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES_C))
-OBJECTS += $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(SOURCES_S))
+TARGET   = firmware
+LDSCRIPT = source/sys_link.ld
 
-# Flags corregidos (softfp para evitar el error de VFP)
-CFLAGS = -mcpu=cortex-r4f -marm -mfloat-abi=softfp -mfpu=vfpv3-d16 -I$(INC_DIR) -O0 -g -Wno-attributes
-LDFLAGS = -T $(SRC_DIR)/sys_link.ld -Wl,--gc-sections -nostartfiles --specs=nosys.specs --specs=nano.specs -Wl,--no-warn-rwx-segments
+SRCS_C := $(wildcard source/*.c)
+SRCS_S := $(wildcard source/*.s)
+OBJS   := $(SRCS_C:.c=.o) $(SRCS_S:.s=.o)
+DEPS   := $(OBJS:.o=.d)
 
-all: $(BUILD_DIR)/$(TARGET).elf
+INCLUDES = -Iinclude
 
-# Regla para archivos .c
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+.PHONY: all clean verify
 
-# Regla para archivos .S (NUEVA)
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.S
-	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+all: $(TARGET).elf $(TARGET).bin
+	$(SIZE) $(TARGET).elf
 
-$(BUILD_DIR)/$(TARGET).elf: $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
-	$(OBJCOPY) -O binary $@ $(BUILD_DIR)/$(TARGET).bin
-	@echo --- COMPILACION EXITOSA ---
+$(TARGET).elf: $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $^ -lgcc -lc -lnosys
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -MMD -MP -c -o $@ $<
+
+%.o: %.s
+	$(AS) $(ASFLAGS) $(INCLUDES) -c -o $@ $<
+
+$(TARGET).bin: $(TARGET).elf
+	$(OBJCOPY) -O binary $< $@
+
+verify: $(TARGET).elf
+	arm-none-eabi-readelf -h $< | grep -E 'Data:|Machine:'
 
 clean:
-	@if exist $(BUILD_DIR) rd /s /q $(BUILD_DIR)
+	rm -f $(OBJS) $(DEPS) $(TARGET).elf $(TARGET).bin $(TARGET).map
+
+-include $(DEPS)
