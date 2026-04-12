@@ -1,6 +1,0 @@
-r          // Reset the target (J-Link handles the ICEPick unlock automatically here)
-h          // Halt the CPU
-loadfile build/tms570_project.elf
-r          // Reset again so the Program Counter starts at the new code
-g          // Go (Start execution)
-q          // Quit
