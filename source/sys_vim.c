@@ -71,10 +71,10 @@ static const t_isrFuncPTR s_vim_init[128U] =
     &phantomInterrupt,
     &esmHighInterrupt,            /* Channel 0 */
     &phantomInterrupt,            /* Channel 1 */
-    &phantomInterrupt,            /* Channel 2 */
-    &phantomInterrupt,            /* Channel 3 */
-    &phantomInterrupt,            /* Channel 4 */
-    &phantomInterrupt,            /* Channel 5 */
+    &rtiCompare0Interrupt,            /* Channel 2 */
+    &rtiCompare1Interrupt,            /* Channel 3 */
+    &rtiCompare2Interrupt,            /* Channel 4 */
+    &rtiCompare3Interrupt,            /* Channel 5 */
     &phantomInterrupt,            /* Channel 6 */
     &phantomInterrupt,            /* Channel 7 */
     &phantomInterrupt,            /* Channel 8 */
@@ -364,10 +364,10 @@ void vimInit(void)
     /* enable interrupts */
     vimREG->REQMASKSET0 = (uint32)((uint32)1U << 0U)
                         | (uint32)((uint32)1U << 1U)
-                        | (uint32)((uint32)0U << 2U)
-                        | (uint32)((uint32)0U << 3U)
-                        | (uint32)((uint32)0U << 4U)
-                        | (uint32)((uint32)0U << 5U)
+                        | (uint32)((uint32)1U << 2U)
+                        | (uint32)((uint32)1U << 3U)
+                        | (uint32)((uint32)1U << 4U)
+                        | (uint32)((uint32)1U << 5U)
                         | (uint32)((uint32)0U << 6U)
                         | (uint32)((uint32)0U << 7U)
                         | (uint32)((uint32)0U << 8U)
@@ -753,6 +753,9 @@ void vimGetConfigValue(vim_config_reg_t *config_reg, config_value_type_t type)
 }
 
 
+#pragma CODE_STATE(vimParityErrorHandler, 32)
+#pragma INTERRUPT(vimParityErrorHandler, IRQ)
+#pragma WEAK(vimParityErrorHandler)
 
 /* SourceId : VIM_SourceId_006 */
 /* DesignId : VIM_DesignId_006 */

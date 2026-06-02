@@ -1,56 +1,48 @@
-TOOLCHAIN = arm-none-eabi
-CC        = $(TOOLCHAIN)-gcc
-AS        = $(TOOLCHAIN)-gcc
-LD        = $(TOOLCHAIN)-gcc
-OBJCOPY   = $(TOOLCHAIN)-objcopy
-SIZE      = $(TOOLCHAIN)-size
+SHELL := cmd
 
-CPU_FLAGS = \
-    -mcpu=cortex-r4 \
-    -mfpu=vfpv3-d16 \
-    -mfloat-abi=hard \
-    -mbig-endian \
-    -marm
+TARGET ?= tms570_debug_test.out
+BUILDDIR ?= .dist
+TI_CGT_ARM ?= C:/ti/ti-cgt-arm_20.2.7.LTS
 
-CFLAGS  = $(CPU_FLAGS) -Os -Wall -Wextra -ffunction-sections -fdata-sections -g3
-ASFLAGS = $(CPU_FLAGS) -x assembler-with-cpp
-LDFLAGS = $(CPU_FLAGS) \
-    -nostartfiles \
-    -Wl,--gc-sections \
-    -Wl,-Map=$(TARGET).map \
-    -T $(LDSCRIPT)
+CC := armcl
+HEX := armhex
 
-TARGET   = firmware
-LDSCRIPT = source/sys_link.ld
+DEVICE := 7R4
+ENDIAN := big
 
-SRCS_C := $(wildcard source/*.c)
-SRCS_S := $(wildcard source/*.s)
-OBJS   := $(SRCS_C:.c=.o) $(SRCS_S:.s=.o)
-DEPS   := $(OBJS:.o=.d)
+INCLUDE_DIRS := $(TI_CGT_ARM)/include include source
+INCLUDES := $(foreach dir,$(INCLUDE_DIRS),--include_path=$(dir))
+RTS_LIB := $(TI_CGT_ARM)/lib/rtsv7R4_T_be_v3D16_eabi.lib
 
-INCLUDES = -Iinclude
+COMMONFLAGS := --silicon_version=$(DEVICE) --code_state=32 --endian=$(ENDIAN) --float_support=vfpv3d16 --abi=eabi --display_error_number --diag_wrap=off
+CFLAGS := $(COMMONFLAGS) $(INCLUDES) --compile_only
+ASFLAGS := $(COMMONFLAGS) $(INCLUDES)
+LDFLAGS := --rom_model --heap_size=0x400 --entry_point=_c_int00 --map_file=$(BUILDDIR)/$(basename $(TARGET)).map
 
-.PHONY: all clean verify
+C_SOURCES := $(wildcard source/*.c)
+ASM_SOURCES := $(wildcard source/*.asm)
 
-all: $(TARGET).elf $(TARGET).bin
-	$(SIZE) $(TARGET).elf
+OBJECTS := $(patsubst source/%.c,$(BUILDDIR)/%.obj,$(C_SOURCES)) $(patsubst source/%.asm,$(BUILDDIR)/%.obj,$(ASM_SOURCES))
 
-$(TARGET).elf: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^ -lgcc -lc -lnosys
+.PHONY: all clean hex
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -MMD -MP -c -o $@ $<
+all: $(TARGET)
 
-%.o: %.s
-	$(AS) $(ASFLAGS) $(INCLUDES) -c -o $@ $<
+$(BUILDDIR):
+	@if not exist "$(BUILDDIR)" mkdir "$(BUILDDIR)"
 
-$(TARGET).bin: $(TARGET).elf
-	$(OBJCOPY) -O binary $< $@
+$(BUILDDIR)/%.obj: source/%.c | $(BUILDDIR)
+	$(CC) $(CFLAGS) --output_file=$@ $<
 
-verify: $(TARGET).elf
-	arm-none-eabi-readelf -h $< | grep -E 'Data:|Machine:'
+$(BUILDDIR)/%.obj: source/%.asm | $(BUILDDIR)
+	$(CC) $(ASFLAGS) --compile_only --output_file=$@ $<
+
+$(TARGET): $(OBJECTS) source/sys_link.cmd
+	$(CC) $(COMMONFLAGS) $(OBJECTS) --run_linker $(LDFLAGS) source/sys_link.cmd --library=$(RTS_LIB) --output_file=$@
+
+hex: $(TARGET)
+	$(HEX) -o $(BUILDDIR)/$(basename $(TARGET)).hex $(TARGET)
 
 clean:
-	rm -f $(OBJS) $(DEPS) $(TARGET).elf $(TARGET).bin $(TARGET).map
-
--include $(DEPS)
+	@if exist "$(BUILDDIR)" rmdir /s /q "$(BUILDDIR)"
+	@if exist "$(TARGET)" del /q "$(TARGET)"

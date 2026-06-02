@@ -72,8 +72,10 @@
 
 
 /* External Functions */
+/*SAFETYMCUSW 218 S MR:20.2 <APPROVED> "Functions from library" */
+extern void __TI_auto_init(void);
 /*SAFETYMCUSW 354 S MR:NA <APPROVED> " Startup code(main should be declared by the user)" */
-extern void main(void);
+extern int main(void);
 /*SAFETYMCUSW 122 S MR:20.11 <APPROVED> "Startup code(exit and abort need to be present)" */
 /*SAFETYMCUSW 354 S MR:NA <APPROVED> " Startup code(Extern declaration present in the library)" */
 extern void exit(int _status);
@@ -83,12 +85,14 @@ extern void exit(int _status);
 /* USER CODE END */
 void handlePLLLockFail(void);
 /* Startup Routine */
-void _c_int00(void) __attribute__((noreturn));
+void _c_int00(void);
 #define PLL_RETRIES 5U
 /* USER CODE BEGIN (4) */
 /* USER CODE END */
 
-__attribute__ ((naked))
+#pragma CODE_STATE(_c_int00, 32)
+#pragma INTERRUPT(_c_int00, RESET)
+#pragma WEAK(_c_int00)
 
 /* SourceId : STARTUP_SourceId_001 */
 /* DesignId : STARTUP_DesignId_001 */
@@ -628,19 +632,8 @@ void _c_int00(void)
     /* Configure system response to error conditions signaled to the ESM group1 */
     /* This function can be configured from the ESM tab of HALCoGen */
     esmInit();
-    {
-    	extern uint32 _sidata, _sdata, _edata;
-    	uint32 *src, *dst;
-
-    	src = &_sidata;
-    	dst = &_sdata;
-
-       	while (dst < &_edata)
-       	{
-    		*dst++ = *src++;
-    	}
-
-    }
+    /* initialize copy table */
+    __TI_auto_init();
 /* USER CODE BEGIN (75) */
 /* USER CODE END */
     
@@ -650,8 +643,11 @@ void _c_int00(void)
 /*SAFETYMCUSW 60 D MR:8.8 <APPROVED> "Startup code(Declaration for main in library;Only doing an extern for the same)" */
     main();
 
+/* USER CODE BEGIN (76) */
+/* USER CODE END */
 /*SAFETYMCUSW 122 S MR:20.11 <APPROVED> "Startup code(exit and abort need to be present)" */
     exit(0);
+
 /* USER CODE BEGIN (77) */
 /* USER CODE END */
 }

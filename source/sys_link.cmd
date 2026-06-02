@@ -1,14 +1,8 @@
-/** @file sys_main.c 
-*   @brief Application main file
-*   @date 11-Dec-2018
-*   @version 04.07.01
-*
-*   This file contains an empty main function,
-*   which can be used for the application.
-*/
-
+/*----------------------------------------------------------------------------*/
+/* sys_link.cmd                                                               */
+/*                                                                            */
 /* 
-* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com 
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -41,36 +35,63 @@
 *
 */
 
-
+/*                                                                            */
+/*----------------------------------------------------------------------------*/
 /* USER CODE BEGIN (0) */
 /* USER CODE END */
 
-/* Include Files */
 
-#include "sys_common.h"
+/*----------------------------------------------------------------------------*/
+/* Linker Settings                                                            */
+
+--retain="*(.intvecs)"
 
 /* USER CODE BEGIN (1) */
 /* USER CODE END */
 
-/** @fn void main(void)
-*   @brief Application main function
-*   @note This function is empty by default.
-*
-*   This function is called after startup.
-*   The user can use this function to implement the application.
-*/
+/*----------------------------------------------------------------------------*/
+/* Memory Map                                                                 */
+
+MEMORY
+{
+    VECTORS (X)  : origin=0x00000000 length=0x00000020
+    FLASH0  (RX) : origin=0x00000020 length=0x0013FFE0
+    STACKS  (RW) : origin=0x08000000 length=0x00001500
+    RAM     (RW) : origin=0x08001500 length=0x0002EB00
 
 /* USER CODE BEGIN (2) */
 /* USER CODE END */
+}
 
-int main(void)
-{
 /* USER CODE BEGIN (3) */
 /* USER CODE END */
 
-    return 0;
-}
+/*----------------------------------------------------------------------------*/
+/* Section Configuration                                                      */
 
+SECTIONS
+{
+    .intvecs : {} > VECTORS
+    .text    : {} > FLASH0 
+    .const   : {} > FLASH0 
+    .cinit   : {} > FLASH0 
+    .pinit   : {} > FLASH0 
+    .bss     : {} > RAM
+    .data    : {} > RAM
+    .sysmem  : {} > RAM
+    
 
 /* USER CODE BEGIN (4) */
 /* USER CODE END */
+}
+
+/* USER CODE BEGIN (5) */
+/* USER CODE END */
+
+
+/*----------------------------------------------------------------------------*/
+/* Misc                                                                       */
+
+/* USER CODE BEGIN (6) */
+/* USER CODE END */
+/*----------------------------------------------------------------------------*/
